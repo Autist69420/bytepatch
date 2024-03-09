@@ -4,11 +4,17 @@ use scroll::{ctx, Endian, Pread};
 
 pub mod constants;
 pub mod instructions;
+pub mod source_lines;
+pub mod locals;
+pub mod upvalues;
 
 use crate::try_gread_vec_with;
 
 use instructions::{Instruction, Opcode};
-use constants::Constant;
+use constants::{Constant, Constants};
+use source_lines::SourceLines;
+use locals::{Local, Locals};
+use upvalues::{Upvalues, Upvalue};
 
 #[derive(Debug)]
 pub struct Header {
@@ -100,7 +106,7 @@ impl<'a> LuaString {
 }
 
 #[derive(Debug)]
-pub struct Instructions(Vec<Instruction>);
+pub struct Instructions(pub Vec<Instruction>);
 
 impl<'a> Instructions {
     pub fn read(
@@ -130,7 +136,11 @@ pub struct Chunk {
     pub is_vararg: u8,
     pub max_stack_size: u8,
     pub instructions: Vec<Instruction>,
-    pub constants: Vec<Constant>
+    pub constants: Vec<Constant>,
+    pub prototypes: Vec<Chunk>,
+    pub source_lines: Vec<u32>,
+    pub locals: Vec<Local>,
+    pub upvalues: Vec<Upvalue>
 }
 
 impl<'a> Chunk {
@@ -149,12 +159,19 @@ impl<'a> Chunk {
 
         let instructions = Instructions::read(src, offset, endian)?;
 
-        let constant_amount: u32 = src.gread_with(offset, endian)?;
-        let mut constants: Vec<Constant> = Vec::new();
-        for n in 0..constant_amount {
-            let constant = Constant::decode(src, offset, endian)?;
-            constants.push(constant);
+        let constants = Constants::read(src, offset, endian)?;
+
+        // Messy but that can stay here, lmao.
+        let prototype_amount: u32 = src.gread_with(offset, endian)?;
+        let mut prototypes: Vec<Chunk> = Vec::new();
+        for _ in 0..prototype_amount {
+            let prototype = Chunk::read(src, offset, endian)?;
+            prototypes.push(prototype);
         }
+
+        let source_lines = SourceLines::read(src, offset, endian)?;
+        let locals = Locals::read(src, offset, endian)?;
+        let upvalues = Upvalues::read(src, offset, endian)?;
 
         Ok(Chunk {
             source_name,
@@ -165,7 +182,11 @@ impl<'a> Chunk {
             is_vararg,
             max_stack_size,
             instructions: instructions.0,
-            constants,
+            constants: constants.0,
+            prototypes,
+            source_lines: source_lines.0,
+            locals: locals.0,
+            upvalues: upvalues.0,
         })
     }
 }
