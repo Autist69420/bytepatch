@@ -18,5 +18,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{}", instruction);
     }
 
+    for constant in bytecode.chunk.constants {
+        println!("{:#?}", constant);
+    }
+
     Ok(())
 }

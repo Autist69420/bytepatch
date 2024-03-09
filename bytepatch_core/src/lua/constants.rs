@@ -7,8 +7,8 @@ use super::LuaString;
 pub enum Constant {
     LUA_TNIL,
     LUA_TBOOLEAN(bool),
-    LUA_TNUMBER(u32),
-    LUA_TSTRING(LuaString),
+    LUA_TNUMBER(f64),
+    LUA_TSTRING(String),
 }
 
 impl<'a> Constant {
@@ -25,7 +25,7 @@ impl<'a> Constant {
                 Constant::LUA_TBOOLEAN(value != 0)
             },
             3 => {
-                let value: u32 = src.gread_with(offset, endian)?;
+                let value: f64 = src.gread_with(offset, endian)?;
                 Constant::LUA_TNUMBER(value)
             },
             4 => {
@@ -35,7 +35,7 @@ impl<'a> Constant {
                 #[cfg(target_arch="x86_64")]
                 let str = LuaString::read_u64(src, offset, endian)?;
 
-                Constant::LUA_TSTRING(str)
+                Constant::LUA_TSTRING(str.into())
             },
             _ => unreachable!("Somehow got an invalid constant type")
         };

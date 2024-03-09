@@ -8,6 +8,7 @@ pub mod instructions;
 use crate::try_gread_vec_with;
 
 use instructions::{Instruction, Opcode};
+use constants::Constant;
 
 #[derive(Debug)]
 pub struct Header {
@@ -77,7 +78,8 @@ impl<'a> LuaString {
         endian: Endian,
     ) -> Result<LuaString, Box<dyn std::error::Error>> {
         let size: u32 = src.gread_with(offset, endian)?;
-        let data: Vec<u8> = try_gread_vec_with!(src, offset, size, endian);
+        let mut data: Vec<u8> = try_gread_vec_with!(src, offset, size, endian);
+        let _ = data.pop(); // We remove the null byte at the end, lmao!
 
         Ok(LuaString(data))
     }
@@ -88,7 +90,8 @@ impl<'a> LuaString {
         endian: Endian,
     ) -> Result<LuaString, Box<dyn std::error::Error>> {
         let size: u64 = src.gread_with(offset, endian)?;
-        let data: Vec<u8> = try_gread_vec_with!(src, offset, size, endian);
+        let mut data: Vec<u8> = try_gread_vec_with!(src, offset, size, endian);
+        let _ = data.pop(); // We remove the null byte at the end, lmao!
 
         Ok(LuaString(data))
     }
@@ -125,7 +128,7 @@ pub struct Chunk {
     pub is_vararg: u8,
     pub max_stack_size: u8,
     pub instructions: Vec<Instruction>,
-    // pub constants: Vec<Constant>
+    pub constants: Vec<Constant>
 }
 
 impl<'a> Chunk {
@@ -143,6 +146,13 @@ impl<'a> Chunk {
         let max_stack_size: u8 = src.gread_with(offset, endian)?;
 
         let instructions = Instructions::read(src, offset, endian)?;
+        
+        let constant_amount: u32 = src.gread_with(offset, endian)?;
+        let mut constants: Vec<Constant> = Vec::new();
+        for n in 0..constant_amount {
+            let constant = Constant::decode(src, offset, endian)?;
+            constants.push(constant);
+        }
 
         Ok(Chunk {
             source_name,
@@ -153,6 +163,7 @@ impl<'a> Chunk {
             is_vararg,
             max_stack_size,
             instructions: instructions.0,
+            constants,
         })
     }
 
@@ -171,6 +182,13 @@ impl<'a> Chunk {
 
         let instructions = Instructions::read(src, offset, endian)?;
 
+        let constant_amount: u32 = src.gread_with(offset, endian)?;
+        let mut constants: Vec<Constant> = Vec::new();
+        for n in 0..constant_amount {
+            let constant = Constant::decode(src, offset, endian)?;
+            constants.push(constant);
+        }
+
         Ok(Chunk {
             source_name,
             line_defined,
@@ -180,6 +198,7 @@ impl<'a> Chunk {
             is_vararg,
             max_stack_size,
             instructions: instructions.0,
+            constants
         })
     }
 }
