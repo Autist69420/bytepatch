@@ -29,12 +29,7 @@ impl<'a> Constant {
                 Constant::LUA_TNUMBER(value)
             },
             4 => {
-                #[cfg(target_arch="x86")]
-                let str = LuaString::read_u32(src, offset, endian)?;
-                
-                #[cfg(target_arch="x86_64")]
-                let str = LuaString::read_u64(src, offset, endian)?;
-
+                let str = LuaString::read(src, offset, endian)?;
                 Constant::LUA_TSTRING(str.into())
             },
             _ => unreachable!("Somehow got an invalid constant type")

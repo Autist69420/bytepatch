@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 # TODO: Replace this with `bytepatch`
 bytepatch_core = {path = "../bytepatch_core"}
-scroll = { version = "0.11.0", features = ["derive"] }
+scroll = { version = "0.12.0", features = ["derive"] }

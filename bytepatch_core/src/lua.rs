@@ -72,7 +72,8 @@ impl Display for LuaString {
 }
 
 impl<'a> LuaString {
-    pub fn read_u32(
+    #[cfg(target_arch="x86")]
+    pub fn read(
         src: &'a [u8],
         offset: &mut usize,
         endian: Endian,
@@ -84,7 +85,8 @@ impl<'a> LuaString {
         Ok(LuaString(data))
     }
 
-    pub fn read_u64(
+    #[cfg(target_arch="x86_64")]
+    pub fn read(
         src: &'a [u8],
         offset: &mut usize,
         endian: Endian,
@@ -132,12 +134,12 @@ pub struct Chunk {
 }
 
 impl<'a> Chunk {
-    pub fn read_u32(
+    pub fn read(
         src: &'a [u8],
         offset: &mut usize,
         endian: Endian,
     ) -> Result<Chunk, Box<dyn std::error::Error>> {
-        let source_name = LuaString::read_u32(src, offset, endian)?;
+        let source_name = LuaString::read(src, offset, endian)?;
         let line_defined: u32 = src.gread_with(offset, endian)?;
         let last_line_defined: u32 = src.gread_with(offset, endian)?;
         let num_upvalues: u8 = src.gread_with(offset, endian)?;
@@ -146,7 +148,7 @@ impl<'a> Chunk {
         let max_stack_size: u8 = src.gread_with(offset, endian)?;
 
         let instructions = Instructions::read(src, offset, endian)?;
-        
+
         let constant_amount: u32 = src.gread_with(offset, endian)?;
         let mut constants: Vec<Constant> = Vec::new();
         for n in 0..constant_amount {
@@ -166,41 +168,6 @@ impl<'a> Chunk {
             constants,
         })
     }
-
-    pub fn read_u64(
-        src: &'a [u8],
-        offset: &mut usize,
-        endian: Endian,
-    ) -> Result<Chunk, Box<dyn std::error::Error>> {
-        let source_name = LuaString::read_u64(src, offset, endian)?;
-        let line_defined: u32 = src.gread_with(offset, endian)?;
-        let last_line_defined: u32 = src.gread_with(offset, endian)?;
-        let num_upvalues: u8 = src.gread_with(offset, endian)?;
-        let num_params: u8 = src.gread_with(offset, endian)?;
-        let is_vararg: u8 = src.gread_with(offset, endian)?;
-        let max_stack_size: u8 = src.gread_with(offset, endian)?;
-
-        let instructions = Instructions::read(src, offset, endian)?;
-
-        let constant_amount: u32 = src.gread_with(offset, endian)?;
-        let mut constants: Vec<Constant> = Vec::new();
-        for n in 0..constant_amount {
-            let constant = Constant::decode(src, offset, endian)?;
-            constants.push(constant);
-        }
-
-        Ok(Chunk {
-            source_name,
-            line_defined,
-            last_line_defined,
-            num_upvalues,
-            num_params,
-            is_vararg,
-            max_stack_size,
-            instructions: instructions.0,
-            constants
-        })
-    }
 }
 
 #[derive(Debug)]
@@ -216,11 +183,7 @@ impl<'a> Bytecode {
         endian: Endian,
     ) -> Result<Bytecode, Box<dyn std::error::Error>> {
         let header: Header = src.gread_with(offset, scroll::LE)?;
-        let chunk = match header.size_t_size {
-            4 => Chunk::read_u32(src, offset, endian)?,
-            8 => Chunk::read_u64(src, offset, endian)?,
-            _ => unreachable!("Invalid size_t size, expected 4 or 8 depending on arch"),
-        };
+        let chunk = Chunk::read(src, offset, endian)?;
 
         Ok(Bytecode { header, chunk })
     }
